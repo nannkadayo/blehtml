@@ -13,7 +13,95 @@
 document.getElementById('connect').addEventListener('click', async () => {
   try {
     // ユーザーにデバイスの選択を求める
-    device = await navigator.bluetooth.requestDevice({
+    device = await navigator.bluetooth.requestDevice({<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>ESP32 BLE Control</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 400px; margin: 20px auto; }
+  button { margin: 5px; padding: 10px 15px; }
+  #status { margin-top: 10px; }
+</style>
+</head>
+<body>
+  <h2>ESP32 BLE Control</h2>
+  <button id="connect">Connect BLE Device</button>
+  <div id="status">Status: Not connected</div>
+
+  <h3>Mode</h3>
+  <button id="modeButton">Button Mode</button>
+  <button id="modePIR">PIR Mode</button>
+
+  <h3>LED Control</h3>
+  <button id="ledOn">LED ON</button>
+  <button id="ledOff">LED OFF</button>
+
+  <h3>Child Lock</h3>
+  <button id="lockOn">Child Lock ON</button>
+  <button id="lockOff">Child Lock OFF</button>
+
+  <script>
+    const SERVICE_UUID = '3fb5626e-27b5-4cb9-b6ff-924b70f13215';
+    const CHARACTERISTIC_UUID = '5dfaf517-f077-428d-b909-de9e321d1667';
+
+    let device;
+    let characteristic;
+
+    const statusDiv = document.getElementById('status');
+
+    async function connect() {
+      try {
+        statusDiv.textContent = 'Status: Connecting...';
+        device = await navigator.bluetooth.requestDevice({
+          filters: [{ services: [SERVICE_UUID] }]
+        });
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+
+        statusDiv.textContent = `Status: Connected to ${device.name}`;
+
+        device.addEventListener('gattserverdisconnected', onDisconnected);
+
+      } catch (error) {
+        statusDiv.textContent = 'Status: ' + error;
+        console.error(error);
+      }
+    }
+
+    function onDisconnected() {
+      statusDiv.textContent = 'Status: Disconnected';
+      characteristic = null;
+      device = null;
+    }
+
+    async function sendCommand(cmd) {
+      if (!characteristic) {
+        alert('Not connected to BLE device');
+        return;
+      }
+      const encoder = new TextEncoder();
+      const data = encoder.encode(cmd);
+      try {
+        await characteristic.writeValue(data);
+        console.log('Sent:', cmd);
+      } catch (e) {
+        console.error('Write failed:', e);
+      }
+    }
+
+    document.getElementById('connect').addEventListener('click', connect);
+    document.getElementById('modeButton').addEventListener('click', () => sendCommand('mode button'));
+    document.getElementById('modePIR').addEventListener('click', () => sendCommand('mode pir'));
+    document.getElementById('ledOn').addEventListener('click', () => sendCommand('on'));
+    document.getElementById('ledOff').addEventListener('click', () => sendCommand('off'));
+    document.getElementById('lockOn').addEventListener('click', () => sendCommand('lock on'));
+    document.getElementById('lockOff').addEventListener('click', () => sendCommand('lock off'));
+  </script>
+</body>
+</html>
+
       acceptAllDevices: true,
       optionalServices: ['3fb5626e-27b5-4cb9-b6ff-924b70f13215'] // ここにESP32のサービスUUIDを入れる
     });
@@ -45,3 +133,4 @@ function sendCommand(command) {
 });</script>
 </body>
 </html>
+
