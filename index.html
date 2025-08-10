@@ -1,64 +1,105 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <title>BLE PIR Delay Control</title>
+<meta charset="UTF-8" />
+<title>ESP32 BLE Control</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 400px; margin: 20px auto; }
+  button { margin: 5px; padding: 10px 15px; }
+  #status { margin-top: 10px; }
+  label { display: block; margin-top: 15px; }
+  input[type="range"] { width: 100%; }
+  #sliderValue { font-weight: bold; }
+</style>
 </head>
 <body>
-  <h1>PIR OFF Delay Control</h1>
-  <label for="delayRange">LED消灯遅延秒数（1〜60秒）: </label>
-  <input type="range" id="delayRange" min="1" max="60" value="5" />
-  <span id="delayValue">5</span> 秒
+  <h2>ESP32 BLE Control</h2>
+  <button id="connect">Connect BLE Device</button>
+  <div id="status">Status: Not connected</div>
 
-  <button id="connectBtn">BLE接続</button>
+  <h3>Mode</h3>
+  <button id="modeButton">Button Mode</button>
+  <button id="modePIR">PIR Mode</button>
+
+  <h3>LED Control</h3>
+  <button id="ledOn">LED ON</button>
+  <button id="ledOff">LED OFF</button>
+
+  <h3>Child Lock</h3>
+  <button id="lockOn">Child Lock ON</button>
+  <button id="lockOff">Child Lock OFF</button>
+
+  <h3>PIR LED点灯時間設定（秒）</h3>
+  <label for="pirDurationSlider">Duration: <span id="sliderValue">5</span> 秒</label>
+  <input type="range" id="pirDurationSlider" min="1" max="60" value="5">
 
   <script>
+    const SERVICE_UUID = '3fb5626e-27b5-4cb9-b6ff-924b70f13215';
+    const CHARACTERISTIC_UUID = '5dfaf517-f077-428d-b909-de9e321d1667';
+
     let device;
     let characteristic;
-    const SERVICE_UUID = "3fb5626e-27b5-4cb9-b6ff-924b70f13215";
-    const CHAR_UUID = "5dfaf517-f077-428d-b909-de9e321d1667";
 
-    const delayRange = document.getElementById('delayRange');
-    const delayValue = document.getElementById('delayValue');
-    const connectBtn = document.getElementById('connectBtn');
+    const statusDiv = document.getElementById('status');
+    const slider = document.getElementById('pirDurationSlider');
+    const sliderValue = document.getElementById('sliderValue');
 
-    connectBtn.onclick = async () => {
+    async function connect() {
       try {
+        statusDiv.textContent = 'Status: Connecting...';
         device = await navigator.bluetooth.requestDevice({
           filters: [{ services: [SERVICE_UUID] }]
         });
         const server = await device.gatt.connect();
         const service = await server.getPrimaryService(SERVICE_UUID);
-        characteristic = await service.getCharacteristic(CHAR_UUID);
-        alert("接続成功");
+        characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+
+        statusDiv.textContent = `Status: Connected to ${device.name}`;
+
+        device.addEventListener('gattserverdisconnected', onDisconnected);
       } catch (error) {
-        alert("接続失敗: " + error);
+        statusDiv.textContent = 'Status: ' + error;
+        console.error(error);
       }
-    };
+    }
 
-    delayRange.oninput = () => {
-      delayValue.textContent = delayRange.value;
-    };
+    function onDisconnected() {
+      statusDiv.textContent = 'Status: Disconnected';
+      characteristic = null;
+      device = null;
+    }
 
-    delayRange.onchange = async () => {
+    async function sendCommand(cmd) {
       if (!characteristic) {
-        alert("まずBLEに接続してください");
+        alert('Not connected to BLE device');
         return;
       }
-      const sec = delayRange.value;
-      const command = `set_delay ${sec}`;
-      console.log("Send command:", command);
-
       const encoder = new TextEncoder();
-      const data = encoder.encode(command);
-
+      const data = encoder.encode(cmd);
       try {
         await characteristic.writeValue(data);
-        console.log("設定送信完了");
-      } catch (error) {
-        console.error("設定送信失敗:", error);
+        console.log('Sent:', cmd);
+      } catch (e) {
+        console.error('Write failed:', e);
       }
-    };
+    }
+
+    document.getElementById('connect').addEventListener('click', connect);
+    document.getElementById('modeButton').addEventListener('click', () => sendCommand('mode button'));
+    document.getElementById('modePIR').addEventListener('click', () => sendCommand('mode pir'));
+    document.getElementById('ledOn').addEventListener('click', () => sendCommand('on'));
+    document.getElementById('ledOff').addEventListener('click', () => sendCommand('off'));
+    document.getElementById('lockOn').addEventListener('click', () => sendCommand('lock on'));
+    document.getElementById('lockOff').addEventListener('click', () => sendCommand('lock off'));
+
+    // スライダーの変更に応じて値を表示＆BLEに送信
+    slider.addEventListener('input', () => {
+      sliderValue.textContent = slider.value;
+    });
+
+    slider.addEventListener('change', () => {
+      sendCommand(`duration ${slider.value}`);
+    });
   </script>
 </body>
 </html>
