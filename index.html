@@ -7,9 +7,6 @@
   body { font-family: Arial, sans-serif; max-width: 400px; margin: 20px auto; }
   button { margin: 5px; padding: 10px 15px; }
   #status { margin-top: 10px; }
-  label { display: block; margin-top: 15px; }
-  input[type="range"] { width: 100%; }
-  #sliderValue { font-weight: bold; }
 </style>
 </head>
 <body>
@@ -30,8 +27,9 @@
   <button id="lockOff">Child Lock OFF</button>
 
   <h3>PIR LED点灯時間設定（秒）</h3>
-  <label for="pirDurationSlider">Duration: <span id="sliderValue">5</span> 秒</label>
-  <input type="range" id="pirDurationSlider" min="1" max="60" value="5">
+  <label for="pirDurationSlider">Duration: <span id="sliderValue">5</span> 秒</label><br />
+  <input type="range" id="pirDurationSlider" min="1" max="60" value="5" />
+  <button id="sendDuration">送信</button>
 
   <script>
     const SERVICE_UUID = '3fb5626e-27b5-4cb9-b6ff-924b70f13215';
@@ -41,8 +39,6 @@
     let characteristic;
 
     const statusDiv = document.getElementById('status');
-    const slider = document.getElementById('pirDurationSlider');
-    const sliderValue = document.getElementById('sliderValue');
 
     async function connect() {
       try {
@@ -57,6 +53,7 @@
         statusDiv.textContent = `Status: Connected to ${device.name}`;
 
         device.addEventListener('gattserverdisconnected', onDisconnected);
+
       } catch (error) {
         statusDiv.textContent = 'Status: ' + error;
         console.error(error);
@@ -92,12 +89,15 @@
     document.getElementById('lockOn').addEventListener('click', () => sendCommand('lock on'));
     document.getElementById('lockOff').addEventListener('click', () => sendCommand('lock off'));
 
-    // スライダーの変更に応じて値を表示＆BLEに送信
+    const slider = document.getElementById('pirDurationSlider');
+    const sliderValue = document.getElementById('sliderValue');
+    const sendDurationButton = document.getElementById('sendDuration');
+
     slider.addEventListener('input', () => {
       sliderValue.textContent = slider.value;
     });
 
-    slider.addEventListener('change', () => {
+    sendDurationButton.addEventListener('click', () => {
       sendCommand(`duration ${slider.value}`);
     });
   </script>
