@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h2>ESP32 BLE LED Control</h2>
+<button onclick="connectBLE()">Connect & Turn ON</button>
+<button onclick="sendData('off')">Turn OFF</button>
+
+<script>
+let characteristic;
+
+async function connectBLE() {
+  try {
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ name: 'ESP32_LED_Control' }],
+      optionalServices: ['713d0000-503e-4c75-ba94-3148f18d941e']
+    });
+
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService('713d0000-503e-4c75-ba94-3148f18d941e');
+    characteristic = await service.getCharacteristic('713d0002-503e-4c75-ba94-3148f18d941e');
+
+    console.log("Connected!");
+    sendData('on'); // 接続後すぐON
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function sendData(data) {
+  if (!characteristic) return;
+  const encoder = new TextEncoder();
+  await characteristic.writeValue(encoder.encode(data));
+  console.log("Sent:", data);
+}
+</script>
+</body>
+</html>
