@@ -1,37 +1,212 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
+<head>
+<meta charset="utf-8" />
+<title>BLE Scanner — Show All Devices</title>
+<style>
+  body{font-family:system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; padding:16px;}
+  button{margin:4px;}
+  table{border-collapse:collapse; width:100%; margin-top:12px;}
+  th,td{border:1px solid #ddd; padding:8px; text-align:left;}
+  th{background:#f4f4f4;}
+  .small{font-size:12px; color:#666;}
+</style>
+</head>
 <body>
-<h2>ESP32 BLE LED Control</h2>
-<button onclick="connectBLE()">Connect & Turn ON</button>
-<button onclick="sendData('off')">Turn OFF</button>
+  <h2>BLE Scanner — All Nearby Devices</h2>
+  <div>
+    <button id="startScan">Start LE Scan (acceptAllAdvertisements)</button>
+    <button id="stopScan" disabled>Stop Scan</button>
+    <button id="chooserScan">Scan (Chooser fallback)</button>
+    <span id="status" class="small">Status: idle</span>
+  </div>
+
+  <table id="deviceTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>ID</th>
+        <th>RSSI</th>
+        <th>Services</th>
+        <th>Last seen</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
 <script>
-let characteristic;
+(() => {
+  const startBtn = document.getElementById('startScan');
+  const stopBtn  = document.getElementById('stopScan');
+  const chooserBtn = document.getElementById('chooserScan');
+  const statusEl = document.getElementById('status');
+  const tbody = document.querySelector('#deviceTable tbody');
 
-async function connectBLE() {
-  try {
-    const device = await navigator.bluetooth.requestDevice({
-      filters: [{ name: 'ESP32_LED_Control' }],
-      optionalServices: ['713d0000-503e-4c75-ba94-3148f18d941e']
-    });
+  let scan = null;                // LE Scan object
+  const devices = new Map();      // deviceId -> { device, name, rssi, uuids, lastSeen }
 
-    const server = await device.gatt.connect();
-    const service = await server.getPrimaryService('713d0000-503e-4c75-ba94-3148f18d941e');
-    characteristic = await service.getCharacteristic('713d0002-503e-4c75-ba94-3148f18d941e');
-
-    console.log("Connected!");
-    sendData('on'); // 接続後すぐON
-  } catch (error) {
-    console.error(error);
+  // utility: render table
+  function renderTable() {
+    tbody.innerHTML = '';
+    const rows = Array.from(devices.values())
+      .sort((a,b) => (b.rssi||0) - (a.rssi||0)); // sort by rssi desc
+    for (const d of rows) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escapeHtml(d.name||'(no name)')}</td>
+        <td class="small">${d.id}</td>
+        <td>${d.rssi !== undefined ? d.rssi : '-'}</td>
+        <td class="small">${(d.uuids && d.uuids.length) ? d.uuids.join(', ') : '-'}</td>
+        <td class="small">${new Date(d.lastSeen).toLocaleTimeString()}</td>
+        <td>
+          <button data-id="${d.id}" class="connectBtn">Connect</button>
+          <button data-id="${d.id}" class="inspectBtn">Inspect</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
   }
-}
 
-async function sendData(data) {
-  if (!characteristic) return;
-  const encoder = new TextEncoder();
-  await characteristic.writeValue(encoder.encode(data));
-  console.log("Sent:", data);
-}
+  // helper
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]); }
+
+  // handle advertisementreceived (LE scan)
+  function onAdvertisement(ev) {
+    // ev is a BluetoothAdvertisingEvent
+    const id = ev.device.id;
+    const name = ev.device.name || ev.name || ev.manufacturerData && ev.manufacturerData.size ? '(has manufacturer data)' : ev.device.name;
+    const rssi = ev.rssi;
+    const uuids = Array.from(ev.uuids || []);
+    const now = Date.now();
+
+    // update map
+    const prev = devices.get(id) || {};
+    devices.set(id, Object.assign({}, prev, {
+      id,
+      device: ev.device,
+      name: name || prev.name || ev.device.name || '(no name)',
+      rssi,
+      uuids,
+      lastSeen: now,
+      advEvent: ev
+    }));
+    renderTable();
+  }
+
+  // start LE scan (accept all adverts)
+  startBtn.addEventListener('click', async () => {
+    if (!('bluetooth' in navigator)) {
+      alert('Web Bluetooth not supported in this browser.');
+      return;
+    }
+    try {
+      statusEl.textContent = 'Status: requesting LE scan...';
+      // Small note: acceptAllAdvertisements may require flags/permissions in some browsers
+      scan = await navigator.bluetooth.requestLEScan({
+        acceptAllAdvertisements: true,
+        keepRepeatedDevices: true
+      });
+      navigator.bluetooth.addEventListener('advertisementreceived', onAdvertisement);
+      statusEl.textContent = 'Status: scanning (LE Scan active)';
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+    } catch (err) {
+      console.error('LE Scan failed', err);
+      statusEl.textContent = 'Status: LE Scan failed — ' + (err && err.message || err);
+      alert('LE scan failed or not permitted by browser. Try the "Scan (Chooser fallback)" button.');
+    }
+  });
+
+  // stop scan
+  stopBtn.addEventListener('click', () => {
+    if (scan && scan.active) {
+      scan.stop();
+    }
+    try {
+      navigator.bluetooth.removeEventListener('advertisementreceived', onAdvertisement);
+    } catch(e){}
+    scan = null;
+    statusEl.textContent = 'Status: stopped';
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+  });
+
+  // Fallback: open chooser and add selected device (user picks one device)
+  chooserBtn.addEventListener('click', async () => {
+    try {
+      statusEl.textContent = 'Status: chooser opening...';
+      const device = await navigator.bluetooth.requestDevice({
+        // acceptAllDevices:true allows showing all devices but still shows native chooser
+        acceptAllDevices: true,
+        optionalServices: [] // you can list services to access after connect
+      });
+      // add to table
+      devices.set(device.id, {
+        id: device.id,
+        device,
+        name: device.name || '(no name)',
+        rssi: device.rssi,
+        uuids: device.uuids || [],
+        lastSeen: Date.now()
+      });
+      renderTable();
+      statusEl.textContent = 'Status: chooser returned';
+    } catch (err) {
+      console.error('Chooser failed', err);
+      statusEl.textContent = 'Status: chooser canceled or failed';
+    }
+  });
+
+  // delegate actions: Connect or Inspect
+  tbody.addEventListener('click', async (ev) => {
+    const btn = ev.target.closest('button');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const info = devices.get(id);
+    if (!info) return alert('Device not found (stale).');
+
+    if (btn.classList.contains('connectBtn')) {
+      try {
+        statusEl.textContent = `Status: connecting to ${info.name || id}...`;
+        const server = await info.device.gatt.connect();
+        statusEl.textContent = `Status: connected to ${info.name || id}`;
+        // show services
+        const services = await server.getPrimaryServices();
+        let msg = `Connected. ${services.length} service(s):\n`;
+        for (const s of services) {
+          msg += ` - ${s.uuid}\n`;
+        }
+        alert(msg);
+        // optional: disconnect immediately or keep connection
+        // server.disconnect();
+      } catch (e) {
+        console.error(e);
+        alert('Connect failed: ' + (e && e.message || e));
+        statusEl.textContent = 'Status: connect failed';
+      }
+    }
+
+    if (btn.classList.contains('inspectBtn')) {
+      const d = info.device;
+      alert(`Device info:\nName: ${d.name}\nId: ${d.id}\n${d.gatt ? 'GATT available' : 'No GATT info (advert only)'}\nLast seen: ${new Date(info.lastSeen).toLocaleString()}\nRSSI: ${info.rssi}`);
+    }
+  });
+
+  // prune stale entries every 10s (optional)
+  setInterval(() => {
+    const now = Date.now();
+    let changed = false;
+    for (const [id, info] of devices) {
+      if (now - info.lastSeen > 30000) { // not seen for 30s
+        devices.delete(id);
+        changed = true;
+      }
+    }
+    if (changed) renderTable();
+  }, 10000);
+
+})();
 </script>
 </body>
 </html>
