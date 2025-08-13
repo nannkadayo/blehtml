@@ -31,6 +31,11 @@
   <input type="range" id="pirDurationSlider" min="1" max="60" value="5" />
   <button id="sendDuration">送信</button>
 
+  <h3>Fan Speed設定</h3>
+  <label for="speedSlider">Speed: <span id="speedValue">50</span></label><br />
+  <input type="range" id="speedSlider" min="0" max="100" value="50" />
+  <button id="sendSpeed">送信</button>
+
   <script>
     const SERVICE_UUID = '3fb5626e-27b5-4cb9-b6ff-924b70f13215';
     const CHARACTERISTIC_UUID = '5dfaf517-f077-428d-b909-de9e321d1667';
@@ -51,9 +56,7 @@
         characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
 
         statusDiv.textContent = `Status: Connected to ${device.name}`;
-
         device.addEventListener('gattserverdisconnected', onDisconnected);
-
       } catch (error) {
         statusDiv.textContent = 'Status: ' + error;
         console.error(error);
@@ -81,6 +84,7 @@
       }
     }
 
+    // 基本操作
     document.getElementById('connect').addEventListener('click', connect);
     document.getElementById('modeButton').addEventListener('click', () => sendCommand('mode button'));
     document.getElementById('modePIR').addEventListener('click', () => sendCommand('mode pir'));
@@ -89,16 +93,26 @@
     document.getElementById('lockOn').addEventListener('click', () => sendCommand('lock on'));
     document.getElementById('lockOff').addEventListener('click', () => sendCommand('lock off'));
 
+    // PIR Duration
     const slider = document.getElementById('pirDurationSlider');
     const sliderValue = document.getElementById('sliderValue');
     const sendDurationButton = document.getElementById('sendDuration');
 
-    slider.addEventListener('input', () => {
-      sliderValue.textContent = slider.value;
-    });
+    slider.addEventListener('input', () => { sliderValue.textContent = slider.value; });
+    sendDurationButton.addEventListener('click', () => { sendCommand(`duration ${slider.value}`); });
 
-    sendDurationButton.addEventListener('click', () => {
-      sendCommand(`duration ${slider.value}`);
+    // Fan Speed
+    const speedSlider = document.getElementById('speedSlider');
+    const speedValue = document.getElementById('speedValue');
+    const sendSpeedButton = document.getElementById('sendSpeed');
+
+    speedSlider.addEventListener('input', () => { speedValue.textContent = speedSlider.value; });
+
+    sendSpeedButton.addEventListener('click', () => {
+      const val = parseInt(speedSlider.value);
+      // 逆マッピング：0→255（停止）、100→50（高速）
+      const mappedSpeed = Math.round(255 - (val / 100) * (255 - 50));
+      sendCommand(`speed ${mappedSpeed}`);
     });
   </script>
 </body>
