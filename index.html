@@ -108,12 +108,14 @@
 
     speedSlider.addEventListener('input', () => { speedValue.textContent = speedSlider.value; });
 
-    sendSpeedButton.addEventListener('click', () => {
-      const val = parseInt(speedSlider.value);
-      // 逆マッピング：0→255（停止）、100→50（高速）
-      const mappedSpeed = Math.round(255 - (val / 100) * (255 - 50));
-      sendCommand(`speed ${mappedSpeed}`);
-    });
+  sendSpeedButton.addEventListener('click', () => {
+  const val = parseInt(speedSlider.value);
+  // 0〜100 → 255〜1 の逆マッピング
+  const mappedSpeed = Math.round(255 - ((val / 100) * (255 - 1)));
+  sendCommand(`speed ${mappedSpeed}`);
+});
+
   </script>
 </body>
 </html>
+
