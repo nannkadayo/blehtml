@@ -427,7 +427,7 @@
     
     sendDurationButton.addEventListener('click', (e) => { 
       const originalText = e.target.textContent;
-      e.target.textContent = '✅ 送信完了';
+      e.target.textContent = '✅ 送信完了!';
       setTimeout(() => e.target.textContent = originalText, 1000);
       sendCommand(`duration ${slider.value}`); 
     });
@@ -446,7 +446,7 @@
       const mappedSpeed = val
       
       const originalText = e.target.textContent;
-      e.target.textContent = '✅ 送信完了';
+      e.target.textContent = '✅ 送信完了!';
       setTimeout(() => e.target.textContent = originalText, 1000);
       
       sendCommand(`speed_perc ${mappedSpeed}`);
@@ -468,5 +468,6 @@
   </script>
 </body>
 </html>
+
 
 
