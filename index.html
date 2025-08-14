@@ -427,7 +427,7 @@
     
     sendDurationButton.addEventListener('click', (e) => { 
       const originalText = e.target.textContent;
-      e.target.textContent = '✅ 送信完了';
+      e.target.textContent = '✅ 送信完了!';
       setTimeout(() => e.target.textContent = originalText, 1000);
       sendCommand(`duration ${slider.value}`); 
     });
@@ -446,10 +446,11 @@
       const mappedSpeed = Math.round(255 - ((val / 100) * (255 - 1)));
       
       const originalText = e.target.textContent;
-      e.target.textContent = '✅ 送信完了';
+      e.target.textContent = '✅ 送信完了!';
       setTimeout(() => e.target.textContent = originalText, 1000);
       
-      sendCommand(`speed ${mappedSpeed}`);
+    sendCommand(`speed ${mappedSpeed} ${val}`);
+
     });
 
     // Add smooth transitions to sliders
@@ -468,3 +469,4 @@
   </script>
 </body>
 </html>
+
