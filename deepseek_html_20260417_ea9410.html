@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIDI → ドレミ表示器 | シンプル演奏順表示</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e2a3a 0%, #0f1724 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            color: #e2e8f0;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 30px; }
+        h1 {
+            font-size: 2rem;
+            background: linear-gradient(135deg, #fbbf24, #f97316);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 8px;
+        }
+        .sub { color: #94a3b8; font-size: 0.85rem; }
+        .upload-area {
+            background: rgba(30, 41, 59, 0.8);
+            border: 2px dashed #3b82f6;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 30px;
+        }
+        .upload-area:hover { border-color: #fbbf24; background: rgba(30, 41, 59, 1); }
+        .upload-area.drag-over { border-color: #10b981; background: rgba(16, 185, 129, 0.2); }
+        .upload-icon { font-size: 48px; margin-bottom: 12px; }
+        .file-info { margin-top: 12px; font-size: 0.8rem; color: #64748b; }
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            background: #334155;
+            border: none;
+            color: white;
+            padding: 8px 18px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        button:hover { background: #3b82f6; transform: translateY(-1px); }
+        button.primary { background: #f97316; }
+        button.primary:hover { background: #ea580c; }
+        .stats {
+            background: #0f1724;
+            border-radius: 16px;
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 0.85rem;
+            border-left: 4px solid #fbbf24;
+        }
+        .stats span { color: #fbbf24; font-weight: bold; }
+        .score-container {
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 20px 35px -10px rgba(0,0,0,0.4);
+            overflow-x: auto;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .track {
+            margin-bottom: 28px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 16px;
+        }
+        .track-title {
+            font-weight: bold;
+            font-size: 1rem;
+            background: #f1f5f9;
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 20px;
+            margin-bottom: 16px;
+            color: #1e293b;
+        }
+        .event-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 6px 12px;
+            margin-bottom: 6px;
+            padding: 4px 6px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .time-label {
+            font-size: 0.6rem;
+            color: #64748b;
+            font-family: monospace;
+            min-width: 65px;
+        }
+        .note {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 4px;
+            background: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            font-size: 1rem;
+        }
+        .note-pitch { font-weight: bold; color: #2563eb; font-size: 1.1rem; }
+        .channel-badge {
+            font-size: 0.6rem;
+            background: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 12px;
+            margin-right: 4px;
+        }
+        .error {
+            background: #7f1d1d;
+            color: #fecaca;
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+        }
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 0.7rem;
+            color: #475569;
+        }
+        .chord-group {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 4px;
+            background: #fef3c7;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+        .chord-bracket { color: #d97706; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>🎵 MIDI → ドレミ表示器</h1>
+        <div class="sub">MIDIファイルをドロップすると、演奏順にドレミ音名を表示</div>
+    </header>
+
+    <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">🎹🎵</div>
+        <div>クリックまたはドラッグ＆ドロップで .mid / .midi ファイルを開く</div>
+        <div class="file-info">対応: 標準MIDIファイル (Format 0 / 1)</div>
+        <input type="file" id="fileInput" accept=".mid,.midi" style="display: none;">
+    </div>
+
+    <div class="controls" id="controls" style="display: none;">
+        <button id="exportTxtBtn" class="primary">📄 ドレミをテキスト出力</button>
+        <button id="clearBtn">🗑 クリア</button>
+    </div>
+
+    <div id="statsPanel" class="stats" style="display: none;"></div>
+    <div id="resultArea" class="score-container">
+        <div style="text-align: center; color: #94a3b8; padding: 40px;">
+            ⬆ 上のエリアをクリックして .mid / .midi ファイルを読み込んでください<br>
+            (ハンガリー狂詩曲第2番のMIDIなど)
+        </div>
+    </div>
+    <footer>※ 同じ発音時刻の音は横一列にグループ表示。チャンネル番号で右手/左手を識別できます。</footer>
+</div>
+
+<script>
+    // MIDIパーサー (簡易版)
+    class MidiParser {
+        static parse(arrayBuffer) {
+            const data = new Uint8Array(arrayBuffer);
+            let pos = 0;
+            
+            // ヘッダーチャンク
+            const header = this.readString(data, pos, 4);
+            if (header !== 'MThd') throw new Error('Invalid MIDI file');
+            pos += 4;
+            
+            const headerLen = this.readInt32(data, pos);
+            pos += 4;
+            const format = this.readInt16(data, pos);
+            pos += 2;
+            const numTracks = this.readInt16(data, pos);
+            pos += 2;
+            const division = this.readInt16(data, pos);
+            pos += 2;
+            
+            const ticksPerQuarter = division & 0x7FFF;
+            const usesSMPTE = (division & 0x8000) !== 0;
+            
+            // トラックを読み込み
+            const tracks = [];
+            for (let t = 0; t < numTracks; t++) {
+                const trackHeader = this.readString(data, pos, 4);
+                if (trackHeader !== 'MTrk') throw new Error('Invalid track header');
+                pos += 4;
+                const trackLen = this.readInt32(data, pos);
+                pos += 4;
+                const trackData = data.slice(pos, pos + trackLen);
+                pos += trackLen;
+                const events = this.parseTrack(trackData);
+                tracks.push({ index: t, events: events });
+            }
+            
+            return { format, numTracks, ticksPerQuarter, usesSMPTE, tracks };
+        }
+        
+        static parseTrack(data) {
+            const events = [];
+            let pos = 0;
+            let absoluteTime = 0;
+            let lastStatus = 0;
+            
+            while (pos < data.length) {
+                // 可変長時間
+                const delta = this.readVarInt(data, pos);
+                pos = delta.newPos;
+                absoluteTime += delta.value;
+                
+                let status = data[pos];
+                pos++;
+                
+                // ランニングステータス
+                if (status < 0x80) {
+                    // 前のステータスを使う
+                    pos--;
+                    status = lastStatus;
+                }
+                
+                lastStatus = status;
+                const type = status >> 4;
+                const channel = status & 0x0F;
+                
+                if (type === 0x8) { // Note Off
+                    const note = data[pos];
+                    const velocity = data[pos + 1];
+                    pos += 2;
+                    events.push({
+                        type: 'note_off',
+                        channel: channel,
+                        note: note,
+                        velocity: velocity,
+                        time: absoluteTime
+                    });
+                } else if (type === 0x9) { // Note On
+                    const note = data[pos];
+                    const velocity = data[pos + 1];
+                    pos += 2;
+                    events.push({
+                        type: 'note_on',
+                        channel: channel,
+                        note: note,
+                        velocity: velocity,
+                        time: absoluteTime
+                    });
+                } else if (type === 0xA) { // Poly Aftertouch
+                    pos += 2;
+                } else if (type === 0xB) { // Control Change
+                    pos += 2;
+                } else if (type === 0xC) { // Program Change
+                    pos += 1;
+                } else if (type === 0xD) { // Channel Aftertouch
+                    pos += 1;
+                } else if (type === 0xE) { // Pitch Bend
+                    pos += 2;
+                } else if (status === 0xFF) { // Meta Event
+                    const metaType = data[pos];
+                    pos++;
+                    const metaLen = this.readVarInt(data, pos);
+                    pos = metaLen.newPos;
+                    pos += metaLen.value;
+                } else if (status === 0xF0 || status === 0xF7) { // SysEx
+                    const sysLen = this.readVarInt(data, pos);
+                    pos = sysLen.newPos;
+                    pos += sysLen.value;
+                }
+            }
+            
+            return events;
+        }
+        
+        static readString(data, pos, len) {
+            return String.fromCharCode(...data.slice(pos, pos + len));
+        }
+        
+        static readInt32(data, pos) {
+            return (data[pos] << 24) | (data[pos+1] << 16) | (data[pos+2] << 8) | data[pos+3];
+        }
+        
+        static readInt16(data, pos) {
+            return (data[pos] << 8) | data[pos+1];
+        }
+        
+        static readVarInt(data, pos) {
+            let value = 0;
+            let byte;
+            do {
+                byte = data[pos];
+                value = (value << 7) | (byte & 0x7F);
+                pos++;
+            } while (byte & 0x80);
+            return { value: value, newPos: pos };
+        }
+    }
+    
+    // 音番号 → 音名 (C0 = 12 を基準)
+    function midiNoteToName(noteNum) {
+        const names = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+        const octave = Math.floor(noteNum / 12) - 1;
+        const name = names[noteNum % 12];
+        return `${name}`;
+    }
+    
+    // MIDI読み込みメイン
+    async function parseMIDIFile(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const midi = MidiParser.parse(e.target.result);
+                    resolve(midi);
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            reader.onerror = () => reject(new Error('ファイル読み込みエラー'));
+            reader.readAsArrayBuffer(file);
+        });
+    }
+    
+    // 表示用にトラックを処理
+    function processMIDI(midi) {
+        // すべての note_on イベントを収集 (note_off は無視)
+        const allNotes = [];
+        
+        for (const track of midi.tracks) {
+            for (const event of track.events) {
+                if (event.type === 'note_on' && event.velocity > 0) {
+                    allNotes.push({
+                        time: event.time,
+                        note: event.note,
+                        channel: event.channel,
+                        track: track.index
+                    });
+                }
+            }
+        }
+        
+        // 時間でソート
+        allNotes.sort((a, b) => a.time - b.time);
+        
+        // 同じ時間の音符をグループ化
+        const grouped = [];
+        let currentGroup = [];
+        let lastTime = -1;
+        
+        for (const note of allNotes) {
+            if (note.time !== lastTime && currentGroup.length > 0) {
+                grouped.push({ time: lastTime, notes: [...currentGroup] });
+                currentGroup = [];
+            }
+            currentGroup.push(note);
+            lastTime = note.time;
+        }
+        if (currentGroup.length > 0) {
+            grouped.push({ time: lastTime, notes: currentGroup });
+        }
+        
+        return { events: grouped, ticksPerQuarter: midi.ticksPerQuarter };
+    }
+    
+    function getChannelIcon(channel) {
+        // 一般的に channel 0 = 右手, channel 1 = 左手 のことが多い
+        if (channel === 0) return '🎼';
+        if (channel === 1) return '🎵';
+        return `CH${channel}`;
+    }
+    
+    function renderMIDIView(processed) {
+        const { events, ticksPerQuarter } = processed;
+        
+        if (events.length === 0) {
+            return '<div class="error">MIDIにノートイベントが見つかりません</div>';
+        }
+        
+        let html = '<div class="doremi-view">';
+        html += `<div class="track"><div class="track-title">🎹 全トラック (演奏順)</div>`;
+        
+        // 小節単位の代わりに、ある程度の時間間隔で区切りを入れる
+        let lastMeasureTime = -1;
+        let measureCount = 1;
+        const measureTicks = ticksPerQuarter * 4; // 4/4拍子仮定
+        
+        for (const ev of events) {
+            const measureNum = Math.floor(ev.time / measureTicks) + 1;
+            if (measureNum !== lastMeasureTime) {
+                if (lastMeasureTime !== -1) {
+                    html += `</div>`;
+                }
+                html += `<div class="event-row" style="background: #f8fafc; margin-top: 8px;">`;
+                html += `<span class="time-label" style="color:#f59e0b;">📌 小節 ${measureNum}</span>`;
+                lastMeasureTime = measureNum;
+            } else {
+                html += `<div class="event-row">`;
+                html += `<span class="time-label">${(ev.time / ticksPerQuarter).toFixed(1)}拍</span>`;
+            }
+            
+            // 和音をまとめる (同じ時間の音)
+            const noteSpans = [];
+            for (const note of ev.notes) {
+                const noteName = midiNoteToName(note.note);
+                const icon = getChannelIcon(note.channel);
+                noteSpans.push(`<span class="note"><span class="channel-badge">${icon}</span> <span class="note-pitch">${noteName}</span></span>`);
+            }
+            html += noteSpans.join(' ');
+            html += `</div>`;
+        }
+        html += `</div></div>`;
+        
+        return html;
+    }
+    
+    function exportToText(processed) {
+        const { events, ticksPerQuarter } = processed;
+        const lines = [];
+        let lastMeasure = -1;
+        const measureTicks = ticksPerQuarter * 4;
+        
+        for (const ev of events) {
+            const measure = Math.floor(ev.time / measureTicks) + 1;
+            if (measure !== lastMeasure) {
+                if (lastMeasure !== -1) lines.push('');
+                lines.push(`【小節 ${measure}】`);
+                lastMeasure = measure;
+            }
+            const beat = (ev.time / ticksPerQuarter).toFixed(1);
+            const notes = ev.notes.map(n => {
+                const ch = n.channel === 0 ? '右' : (n.channel === 1 ? '左' : `CH${n.channel}`);
+                return `${ch}${midiNoteToName(n.note)}`;
+            }).join(' ');
+            lines.push(`  ${beat}拍目: ${notes}`);
+        }
+        return lines.join('\n');
+    }
+    
+    // UI
+    let currentData = null;
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const resultArea = document.getElementById('resultArea');
+    const controlsDiv = document.getElementById('controls');
+    const statsPanel = document.getElementById('statsPanel');
+    const exportBtn = document.getElementById('exportTxtBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    
+    uploadArea.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+    uploadArea.addEventListener('drop', async e => {
+        e.preventDefault();
+        uploadArea.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file && (file.name.endsWith('.mid') || file.name.endsWith('.midi'))) {
+            await loadAndRender(file);
+        } else {
+            resultArea.innerHTML = '<div class="error">.mid または .midi ファイルをドロップしてください</div>';
+        }
+    });
+    fileInput.addEventListener('change', async e => {
+        if (e.target.files[0]) await loadAndRender(e.target.files[0]);
+    });
+    
+    async function loadAndRender(file) {
+        resultArea.innerHTML = '<div style="text-align:center; padding:40px;">⏳ MIDI解析中...</div>';
+        try {
+            const midi = await parseMIDIFile(file);
+            const processed = processMIDI(midi);
+            currentData = processed;
+            
+            const noteCount = processed.events.reduce((sum, ev) => sum + ev.notes.length, 0);
+            statsPanel.style.display = 'flex';
+            statsPanel.innerHTML = `<span>📄 ${escapeHtml(file.name)}</span>
+                                    <span>🎵 ノート数: ${noteCount}</span>
+                                    <span>🎯 イベント数: ${processed.events.length}</span>
+                                    <span>⏱️ 分解能: ${midi.ticksPerQuarter} ticks/4分音符</span>`;
+            resultArea.innerHTML = renderMIDIView(processed);
+            controlsDiv.style.display = 'flex';
+        } catch (err) {
+            console.error(err);
+            resultArea.innerHTML = `<div class="error">❌ MIDI解析エラー: ${escapeHtml(err.message)}</div>`;
+            controlsDiv.style.display = 'none';
+            statsPanel.style.display = 'none';
+        }
+    }
+    
+    exportBtn.addEventListener('click', () => {
+        if (currentData) {
+            const txt = exportToText(currentData);
+            const blob = new Blob([txt], {type: 'text/plain'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'doremi_export.txt';
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+    });
+    clearBtn.addEventListener('click', () => {
+        currentData = null;
+        resultArea.innerHTML = '<div style="text-align:center; padding:40px;">📭 クリアしました</div>';
+        controlsDiv.style.display = 'none';
+        statsPanel.style.display = 'none';
+        fileInput.value = '';
+    });
+    
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
+    }
+</script>
+</body>
+</html>
