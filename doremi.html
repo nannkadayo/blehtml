@@ -422,13 +422,20 @@ function midiNoteToName(noteNum) {
                 html += `<span class="time-label">${(ev.time / ticksPerQuarter).toFixed(1)}拍</span>`;
             }
             
-            // 和音をまとめる (同じ時間の音)
-            const noteSpans = [];
-            for (const note of ev.notes) {
-                const noteName = midiNoteToName(note.note);
-                const icon = getChannelIcon(note.channel);
-                noteSpans.push(`<span class="note"><span class="channel-badge">${icon}</span> <span class="note-pitch">${noteName}</span></span>`);
-            }
+        // 和音をピッチ順に並べる（低い→高い）
+const sortedNotes = ev.notes.slice().sort((a, b) => a.note - b.note);
+
+const noteSpans = [];
+for (const note of sortedNotes) {
+    const noteName = midiNoteToName(note.note);
+    const icon = getChannelIcon(note.channel);
+    noteSpans.push(
+        `<span class="note">
+            <span class="channel-badge">${icon}</span>
+            <span class="note-pitch">${noteName}</span>
+        </span>`
+    );
+}
             html += noteSpans.join(' ');
             html += `</div>`;
         }
