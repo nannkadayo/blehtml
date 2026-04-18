@@ -321,13 +321,12 @@
         }
     }
     
-    // 音番号 → 音名 (C0 = 12 を基準)
-    function midiNoteToName(noteNum) {
-        const names = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
-        const octave = Math.floor(noteNum / 12) - 1;
-        const name = names[noteNum % 12];
-        return `${name}`;
-    }
+function midiNoteToName(noteNum) {
+    const names = ['ド', 'ド♯', 'レ', 'レ♯', 'ミ', 'ファ', 'ファ♯', 'ソ', 'ソ♯', 'ラ', 'ラ♯', 'シ'];
+    const octave = Math.floor(noteNum / 12) - 1;
+    const name = names[noteNum % 12];
+    return `${name}`;
+}
     
     // MIDI読み込みメイン
     async function parseMIDIFile(file) {
