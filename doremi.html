@@ -2,602 +2,625 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MIDI → ドレミ表示器 | オクターブ付き音高表示</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>MIDI ドレミビューア | シーク再生＋テンポ調整</title>
+    <!-- Google Material Symbols & Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0,1" />
     <style>
-        * { box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', 'SF Pro', 'Noto Sans', system-ui, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #020617 100%);
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-            color: #e2e8f0;
+            background: #f8fafd;
+            font-family: 'Google Sans', 'Segoe UI', 'Noto Sans JP', system-ui, sans-serif;
+            color: #1e293b;
+            padding: 24px 20px;
+            position: relative;
         }
-        .container { max-width: 1300px; margin: 0 auto; }
-        header { text-align: center; margin-bottom: 30px; }
-        h1 {
-            font-size: 2.2rem;
-            background: linear-gradient(135deg, #facc15, #f97316, #ef4444);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            margin-bottom: 8px;
-            letter-spacing: -0.5px;
-        }
-        .sub { color: #94a3b8; font-size: 0.9rem; }
-        .upload-area {
-            background: rgba(30, 41, 59, 0.7);
-            border: 2px dashed #3b82f6;
-            border-radius: 28px;
-            padding: 40px 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.25s ease;
-            margin-bottom: 30px;
-            backdrop-filter: blur(2px);
-        }
-        .upload-area:hover { border-color: #fbbf24; background: rgba(30, 41, 59, 0.95); transform: scale(0.99); }
-        .upload-area.drag-over { border-color: #10b981; background: rgba(16, 185, 129, 0.2); }
-        .upload-icon { font-size: 54px; margin-bottom: 12px; }
-        .file-info { margin-top: 12px; font-size: 0.75rem; color: #64748b; }
-        .controls {
+        .container { max-width: 1400px; margin: 0 auto; }
+        .app-header {
             display: flex;
-            gap: 14px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        button {
-            background: #1e293b;
-            border: 1px solid #334155;
-            color: #f1f5f9;
-            padding: 8px 20px;
-            border-radius: 40px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            font-weight: 500;
-            transition: all 0.2s;
-            backdrop-filter: blur(4px);
-        }
-        button:hover { background: #3b82f6; border-color: #60a5fa; transform: translateY(-2px); }
-        button.primary { background: #ea580c; border-color: #f97316; box-shadow: 0 2px 8px rgba(234,88,12,0.3); }
-        button.primary:hover { background: #c2410c; }
-        .stats {
-            background: #0f172a;
-            border-radius: 20px;
-            padding: 12px 24px;
-            margin-bottom: 24px;
-            display: flex;
+            align-items: baseline;
             justify-content: space-between;
             flex-wrap: wrap;
+            margin-bottom: 28px;
+            gap: 12px;
+        }
+        .title-section h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            background: linear-gradient(145deg, #1e3a8a, #0f2b6d);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .subhead { font-size: 0.85rem; color: #5b6e8c; margin-top: 6px; }
+        .badge { background: #eef2ff; border-radius: 40px; padding: 6px 14px; font-size: 0.75rem; font-weight: 500; color: #1e40af; }
+        .upload-area {
+            background: #ffffff;
+            border: 1.5px dashed #cbd5e1;
+            border-radius: 32px;
+            padding: 48px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 32px;
+            position: relative;
+            z-index: 10;
+        }
+        .upload-area:hover { border-color: #3b82f6; background: #fafcff; transform: scale(0.99); }
+        .upload-area.drag-over { border-color: #10b981; background: #f0fdf4; }
+        .upload-icon .material-symbols-outlined { font-size: 64px; color: #3b82f6; }
+        .upload-text { font-size: 1rem; font-weight: 500; margin: 12px 0 6px; }
+        .file-hint { font-size: 0.75rem; color: #6c7a91; }
+        .controls-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn {
+            font-family: 'Google Sans', sans-serif;
+            background: transparent;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #1e293b;
+        }
+        .btn-primary { background: #eef2ff; color: #1e40af; }
+        .btn-primary:hover { background: #e0e7ff; }
+        .btn-outline { border: 1px solid #cbd5e1; }
+        .btn-outline:hover { background: #f1f5f9; }
+        .btn-accent { background: #1e40af; color: white; }
+        .btn-accent:hover { background: #1e3a8a; transform: translateY(-1px); }
+        .btn-stop { background: #f1f5f9; color: #b91c1c; border: 1px solid #fecaca; }
+        .btn-stop:hover { background: #fee2e2; }
+        .mode-toggle {
+            background: #f1f5f9;
+            border-radius: 40px;
+            padding: 4px;
+            display: inline-flex;
+            gap: 4px;
+        }
+        .mode-btn {
+            padding: 6px 16px;
+            border-radius: 32px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: transparent;
+            border: none;
+        }
+        .mode-btn.active {
+            background: #1e40af;
+            color: white;
+        }
+        .tempo-control {
+            background: white;
+            border-radius: 40px;
+            padding: 4px 16px;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .tempo-control input {
+            width: 140px;
+        }
+        .stats-card {
+            background: #f1f5f9;
+            border-radius: 24px;
+            padding: 14px 24px;
+            margin-bottom: 28px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
             gap: 12px;
             font-size: 0.85rem;
-            border-left: 5px solid #facc15;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            font-weight: 500;
         }
-        .stats span { color: #facc15; font-weight: bold; }
+        .stat-item { display: flex; align-items: center; gap: 8px; background: white; padding: 6px 16px; border-radius: 40px; }
         .score-container {
             background: #ffffff;
             border-radius: 28px;
-            padding: 24px;
-            box-shadow: 0 25px 40px -12px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.02);
             overflow-x: auto;
-            max-height: 70vh;
             overflow-y: auto;
+            max-height: 55vh;
+            scroll-behavior: smooth;
         }
-        /* 楽譜風レイアウト */
-        .doremi-view {
-            font-family: 'SF Mono', 'Cascadia Code', monospace;
-        }
-        .measure-block {
-            margin-bottom: 20px;
-            border-left: 4px solid #facc15;
-            padding-left: 16px;
-            background: #fefce8;
-            border-radius: 0 16px 16px 0;
-        }
-        .measure-header {
-            font-weight: 800;
-            font-size: 0.8rem;
-            background: #facc15;
-            display: inline-block;
-            padding: 2px 12px;
-            border-radius: 20px;
-            color: #1e293b;
-            margin-bottom: 10px;
-            letter-spacing: 0.5px;
-        }
+        .doremi-view { font-family: 'Roboto Mono', monospace; padding: 20px 24px; }
+        .measure-block { margin-bottom: 28px; border-left: 4px solid #facc15; background: #fefce8; border-radius: 0 20px 20px 0; }
+        .measure-header { display: inline-flex; align-items: center; gap: 6px; background: #facc15; padding: 4px 18px 4px 16px; border-radius: 0 24px 24px 0; font-weight: 600; font-size: 0.75rem; color: #1e293b; }
         .event-row {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 10px 20px;
-            margin-bottom: 8px;
-            padding: 6px 8px;
-            border-bottom: 1px solid #e2e8f0;
+            gap: 12px 20px;
+            padding: 10px 16px;
+            border-bottom: 1px solid #f0f2f5;
             background: #ffffff;
-            transition: background 0.1s;
+            transition: background 0.1s, box-shadow 0.1s;
         }
-        .event-row:hover {
-            background: #fef9e3;
+        .event-row.seek-mode {
+            cursor: pointer;
+        }
+        .event-row.seek-mode:hover {
+            background: #eef2ff;
+        }
+        .event-row.active-row {
+            background: #fef3c7;
+            box-shadow: 0 0 0 2px #f59e0b;
+            border-radius: 12px;
         }
         .time-label {
+            font-family: 'Roboto Mono', monospace;
             font-size: 0.7rem;
-            color: #475569;
-            font-family: monospace;
-            min-width: 70px;
-            background: #f1f5f9;
-            padding: 2px 8px;
-            border-radius: 20px;
-            text-align: center;
-            font-weight: 500;
-        }
-        .note {
-            display: inline-flex;
-            align-items: baseline;
-            gap: 6px;
-            background: white;
+            background: #eef2ff;
             padding: 4px 12px;
-            border-radius: 36px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            font-size: 1rem;
-            transition: 0.05s linear;
-            border: 1px solid #e2e8f0;
+            border-radius: 32px;
+            color: #1e40af;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            pointer-events: none;
         }
-        .note-pitch {
-            font-weight: 800;
-            font-size: 1.1rem;
-            letter-spacing: 1px;
+        .chord-group { display: flex; flex-wrap: wrap; gap: 10px; pointer-events: none; }
+        .note-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            padding: 6px 14px;
+            border-radius: 40px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid #e9edf2;
         }
-        /* 音の高さを色で表現 (低音→赤系, 中音→黄緑, 高音→青) */
-        .pitch-low { color: #b91c1c; text-shadow: 0 0 2px #ffcccc55; }
-        .pitch-mid { color: #ca8a04; }
+        .note-chip.active-note {
+            background: #fbbf24;
+            border-color: #f59e0b;
+            animation: pulse-glow 0.4s ease-in-out;
+        }
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 0 0 #fbbf24; background: #fde68a; }
+            100% { box-shadow: 0 0 0 3px rgba(245,158,11,0.4); background: #fbbf24; }
+        }
+        .channel-badge { font-size: 0.6rem; font-weight: 600; background: #f1f5f9; padding: 2px 8px; border-radius: 30px; color: #334155; }
+        .note-pitch { font-weight: 700; font-size: 1rem; }
+        .pitch-low { color: #b91c1c; }
+        .pitch-mid { color: #b45309; }
         .pitch-high { color: #2563eb; }
         .pitch-veryhigh { color: #7c3aed; }
-        .channel-badge {
-            font-size: 0.65rem;
-            background: #eef2ff;
-            padding: 2px 8px;
-            border-radius: 30px;
+        .pitch-bar { font-size: 0.6rem; color: #94a3b8; }
+        .legend { margin-top: 20px; background: #f8fafc; border-radius: 20px; padding: 12px 20px; font-size: 0.7rem; display: flex; flex-wrap: wrap; gap: 18px; }
+        .empty-message { text-align: center; padding: 56px 24px; color: #5b6e8c; }
+        footer { margin-top: 32px; text-align: center; font-size: 0.7rem; color: #7e8aa2; }
+        .fab-scroll {
+            position: fixed;
+            bottom: 28px;
+            left: 28px;
+            z-index: 1000;
+            background: #1e40af;
+            color: white;
+            border: none;
+            border-radius: 56px;
+            padding: 12px 24px;
+            font-family: 'Google Sans', sans-serif;
             font-weight: 600;
-            color: #1e40af;
-        }
-        .octave-hint {
-            font-size: 0.65rem;
-            color: #6b7280;
-            margin-left: 2px;
-            font-weight: normal;
-        }
-        .error {
-            background: #7f1d1d;
-            color: #fecaca;
-            padding: 24px;
-            border-radius: 24px;
-            text-align: center;
-        }
-        footer {
-            text-align: center;
-            margin-top: 30px;
-            font-size: 0.7rem;
-            color: #64748b;
-        }
-        .piano-keyboard-tip {
-            font-size: 0.7rem;
-            background: #0f172a;
-            border-radius: 20px;
-            padding: 6px 12px;
-            margin-top: 12px;
-            display: inline-block;
-        }
-        .chord-group-compact {
+            font-size: 0.9rem;
             display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
             align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .fab-scroll:hover { background: #1e3a8a; transform: scale(1.02); }
+        .fab-scroll.disabled { opacity: 0.6; pointer-events: none; }
+        @media (max-width: 700px) {
+            .fab-scroll { padding: 8px 18px; font-size: 0.75rem; bottom: 16px; left: 16px; }
+            .tempo-control input { width: 100px; }
         }
     </style>
 </head>
 <body>
 <div class="container">
-    <header>
-        <h1>🎵 MIDI → ドレミ表示器 (音の高さがわかる!)</h1>
-        <div class="sub">MIDIファイルを読み込むと、オクターブ＋音名＋高さ色で演奏順に表示します</div>
-    </header>
+    <div class="app-header">
+        <div class="title-section">
+            <h1><span class="material-symbols-outlined">piano</span> MIDI ドレミビューア</h1>
+            <div class="subhead">シーク再生・テンポ調整・自動スクロール</div>
+        </div>
+        <div class="badge">🎵 ドレミ＋オクターブ | ⚡ 拍クリックでシーク</div>
+    </div>
 
     <div class="upload-area" id="uploadArea">
-        <div class="upload-icon">🎹📂🎶</div>
-        <div>クリック または ドラッグ＆ドロップで .mid / .midi ファイルを開く</div>
-        <div class="file-info">対応: 標準MIDIファイル (Format 0 / 1) | 和音も同じ拍でまとめて表示</div>
+        <div class="upload-icon"><span class="material-symbols-outlined">upload_file</span></div>
+        <div class="upload-text">MIDIファイルを開く</div>
+        <div class="file-hint">クリック または ドラッグ＆ドロップ (.mid / .midi)</div>
         <input type="file" id="fileInput" accept=".mid,.midi" style="display: none;">
     </div>
 
-    <div class="controls" id="controls" style="display: none;">
-        <button id="exportTxtBtn" class="primary">📄 ドレミ+オクターブ をテキスト出力</button>
-        <button id="clearBtn">🗑 クリア</button>
-    </div>
-
-    <div id="statsPanel" class="stats" style="display: none;"></div>
-    <div id="resultArea" class="score-container">
-        <div style="text-align: center; color: #64748b; padding: 48px;">
-            🎼 上のエリアをクリックして .mid / .midi ファイルを読み込んでください<br>
-            ✨ 表示される音名は「ド(C)・レ(D)・ミ(E)…」＋オクターブ番号 (例: ド4, ソ5)<br>
-            🎨 低い音ほど赤〜橙、高い音ほど青〜紫で表示されます
+    <div id="controlsWrapper" style="display: none;">
+        <div class="controls-bar">
+            <div class="btn-group">
+                <button id="playBtn" class="btn btn-accent"><span class="material-symbols-outlined">play_arrow</span> 再生</button>
+                <button id="stopBtn" class="btn btn-stop"><span class="material-symbols-outlined">stop</span> 停止</button>
+            </div>
+            <div class="btn-group">
+                <div class="mode-toggle" id="modeToggle">
+                    <button class="mode-btn active" data-mode="normal">🎼 通常</button>
+                    <button class="mode-btn" data-mode="seek">🔍 シークモード</button>
+                </div>
+                <div class="tempo-control">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">speed</span>
+                    <input type="range" id="tempoSlider" min="60" max="240" value="120" step="1">
+                    <span id="tempoValue" style="min-width: 45px;">120 BPM</span>
+                </div>
+            </div>
+            <div class="btn-group">
+                <button id="exportTxtBtn" class="btn btn-primary"><span class="material-symbols-outlined">description</span> テキスト出力</button>
+                <button id="clearBtn" class="btn btn-outline"><span class="material-symbols-outlined">clear</span> クリア</button>
+            </div>
         </div>
     </div>
-    <footer>※ 同じ発音時刻の音は横一列にグループ表示。チャンネル番号で右手/左手の目安になります。色 = 音の高さ。</footer>
+
+    <div id="statsPanel" style="display: none;"></div>
+
+    <div class="score-container" id="scoreContainer">
+        <div id="resultArea" class="doremi-view">
+            <div class="empty-message">
+                <span class="material-symbols-outlined" style="font-size: 48px;">library_music</span>
+                <p>📂 MIDIファイルを読み込むと表示されます<br>🔍 シークモードで拍目をクリック → その位置から再生</p>
+            </div>
+        </div>
+    </div>
+    <footer>⚡ シークモード時：拍目表示部分をクリックでその場から再生 | テンポスライダーで速度変更</footer>
 </div>
+
+<button id="autoScrollBtn" class="fab-scroll">
+    <span class="material-symbols-outlined">center_focus_strong</span> 自動フォーカス開始
+</button>
 
 <script>
     // --------------------------------------------------------------
-    // MIDI パーサー (簡易版, ノートイベント抽出)
+    // MIDIパーサ
     // --------------------------------------------------------------
     class MidiParser {
         static parse(arrayBuffer) {
             const data = new Uint8Array(arrayBuffer);
             let pos = 0;
-            
-            const header = this.readString(data, pos, 4);
-            if (header !== 'MThd') throw new Error('Invalid MIDI file (MThd missing)');
-            pos += 4;
-            
-            const headerLen = this.readInt32(data, pos);
-            pos += 4;
-            const format = this.readInt16(data, pos);
-            pos += 2;
-            const numTracks = this.readInt16(data, pos);
-            pos += 2;
-            const division = this.readInt16(data, pos);
-            pos += 2;
-            
+            if (this.readString(data, pos, 4) !== 'MThd') throw new Error('Invalid MIDI');
+            pos += 8;
+            const format = this.readInt16(data, pos); pos += 2;
+            const numTracks = this.readInt16(data, pos); pos += 2;
+            const division = this.readInt16(data, pos); pos += 2;
             const ticksPerQuarter = division & 0x7FFF;
-            const usesSMPTE = (division & 0x8000) !== 0;
-            
             const tracks = [];
             for (let t = 0; t < numTracks; t++) {
-                const trackHeader = this.readString(data, pos, 4);
-                if (trackHeader !== 'MTrk') throw new Error('Invalid track header');
+                if (this.readString(data, pos, 4) !== 'MTrk') throw new Error('Invalid track');
                 pos += 4;
-                const trackLen = this.readInt32(data, pos);
-                pos += 4;
-                const trackData = data.slice(pos, pos + trackLen);
-                pos += trackLen;
-                const events = this.parseTrack(trackData);
-                tracks.push({ index: t, events: events });
+                const trackLen = this.readInt32(data, pos); pos += 4;
+                const trackData = data.slice(pos, pos + trackLen); pos += trackLen;
+                tracks.push({ index: t, events: this.parseTrack(trackData) });
             }
-            return { format, numTracks, ticksPerQuarter, usesSMPTE, tracks };
+            return { format, numTracks, ticksPerQuarter, tracks };
         }
-        
         static parseTrack(data) {
             const events = [];
-            let pos = 0;
-            let absoluteTime = 0;
-            let lastStatus = 0;
-            
+            let pos = 0, absTime = 0, lastStatus = 0;
             while (pos < data.length) {
-                const delta = this.readVarInt(data, pos);
-                pos = delta.newPos;
-                absoluteTime += delta.value;
-                
-                let status = data[pos];
-                pos++;
-                
-                if (status < 0x80) {
-                    pos--;
-                    status = lastStatus;
-                }
+                const delta = this.readVarInt(data, pos); pos = delta.newPos;
+                absTime += delta.value;
+                let status = data[pos]; pos++;
+                if (status < 0x80) { pos--; status = lastStatus; }
                 lastStatus = status;
                 const type = status >> 4;
                 const channel = status & 0x0F;
-                
-                if (type === 0x8) { // Note Off
-                    const note = data[pos];
-                    const velocity = data[pos+1];
-                    pos += 2;
-                    events.push({ type: 'note_off', channel, note, velocity, time: absoluteTime });
-                } else if (type === 0x9) { // Note On
-                    const note = data[pos];
-                    const velocity = data[pos+1];
-                    pos += 2;
-                    // velocity = 0 のものはノートオフとして扱うが、ここでは楽音として扱う(>0)
-                    if (velocity > 0) {
-                        events.push({ type: 'note_on', channel, note, velocity, time: absoluteTime });
-                    } else {
-                        events.push({ type: 'note_off', channel, note, velocity: 0, time: absoluteTime });
-                    }
-                } else if (type === 0xA) { pos += 2; }
-                else if (type === 0xB) { pos += 2; }
-                else if (type === 0xC) { pos += 1; }
-                else if (type === 0xD) { pos += 1; }
-                else if (type === 0xE) { pos += 2; }
-                else if (status === 0xFF) { // Meta
-                    const metaType = data[pos];
-                    pos++;
-                    const metaLen = this.readVarInt(data, pos);
-                    pos = metaLen.newPos;
-                    pos += metaLen.value;
-                } else if (status === 0xF0 || status === 0xF7) {
-                    const sysLen = this.readVarInt(data, pos);
-                    pos = sysLen.newPos;
-                    pos += sysLen.value;
-                }
+                if (type === 0x8) { const note = data[pos]; pos += 2; events.push({ type: 'note_off', channel, note, time: absTime }); }
+                else if (type === 0x9) { const note = data[pos], vel = data[pos+1]; pos += 2; if (vel > 0) events.push({ type: 'note_on', channel, note, velocity: vel, time: absTime }); else events.push({ type: 'note_off', channel, note, time: absTime }); }
+                else if (type === 0xA || type === 0xB || type === 0xE) pos += 2;
+                else if (type === 0xC || type === 0xD) pos += 1;
+                else if (status === 0xFF) { pos++; const len = this.readVarInt(data, pos); pos = len.newPos; pos += len.value; }
+                else if (status === 0xF0 || status === 0xF7) { const len = this.readVarInt(data, pos); pos = len.newPos; pos += len.value; }
             }
             return events;
         }
-        
-        static readString(data, pos, len) {
-            return String.fromCharCode(...data.slice(pos, pos + len));
-        }
-        static readInt32(data, pos) {
-            return (data[pos] << 24) | (data[pos+1] << 16) | (data[pos+2] << 8) | data[pos+3];
-        }
-        static readInt16(data, pos) {
-            return (data[pos] << 8) | data[pos+1];
-        }
-        static readVarInt(data, pos) {
-            let value = 0;
-            let byte;
-            do {
-                byte = data[pos];
-                value = (value << 7) | (byte & 0x7F);
-                pos++;
-            } while (byte & 0x80);
-            return { value, newPos: pos };
-        }
+        static readString(d, p, l) { return String.fromCharCode(...d.slice(p, p+l)); }
+        static readInt32(d, p) { return (d[p]<<24)|(d[p+1]<<16)|(d[p+2]<<8)|d[p+3]; }
+        static readInt16(d, p) { return (d[p]<<8)|d[p+1]; }
+        static readVarInt(d, p) { let v=0, b; do { b=d[p]; v=(v<<7)|(b&0x7F); p++; } while(b&0x80); return { value:v, newPos:p }; }
     }
-    
-    // --------------------------------------------------------------
-    // 音名変換: ドレミ + オクターブ (MIDI 0 = C-1 → 実用的に)
-    // MIDIノート番号 60 = 中央ハ (ド4) と一般的に表記
-    // --------------------------------------------------------------
-    function midiNoteToNameWithOctave(noteNum) {
-        const names = ['ド', 'ド♯', 'レ', 'レ♯', 'ミ', 'ファ', 'ファ♯', 'ソ', 'ソ♯', 'ラ', 'ラ♯', 'シ'];
-        const octave = Math.floor(noteNum / 12) - 1;  //  MIDI 60 → オクターブ4
-        const nameIndex = noteNum % 12;
-        // ミとシの♯表記を簡潔に (任意)
-        let noteName = names[nameIndex];
-        return { name: noteName, octave: octave, full: `${noteName}${octave}` };
-    }
-    
-    // 音の高さに応じたCSSクラス (視覚的な高低)
-    function getPitchColorClass(noteNum) {
-        if (noteNum < 48) return 'pitch-low';     // 低音域 ～ ド3未満
-        if (noteNum < 64) return 'pitch-mid';     // 中音域 ド3～ミ4
-        if (noteNum < 80) return 'pitch-high';    // 高音域
-        return 'pitch-veryhigh';                  // 超高音域
-    }
-    
-    // チャンネル表示アイコン (右左目安)
-    function getChannelSymbol(channel) {
-        if (channel === 0) return '🎹右';
-        if (channel === 1) return '🎸左';
-        if (channel === 2) return '🎻CH2';
-        if (channel === 3) return '🎷CH3';
-        return `CH${channel}`;
-    }
-    
-    // --------------------------------------------------------------
-    // MIDIデータ処理 → note_onのみ収集・時間グループ化
-    // --------------------------------------------------------------
-    function processMIDIToGroupedNotes(midi) {
-        const allNoteOns = [];
-        for (const track of midi.tracks) {
-            for (const event of track.events) {
-                if (event.type === 'note_on' && event.velocity > 0) {
-                    allNoteOns.push({
-                        time: event.time,
-                        note: event.note,
-                        channel: event.channel,
-                        track: track.index
-                    });
-                }
-            }
-        }
-        // 時間でソート
-        allNoteOns.sort((a,b) => a.time - b.time);
-        
-        // 同じ時間のグループ化
-        const groups = [];
-        let curGroup = [];
-        let curTime = -1;
-        for (const ev of allNoteOns) {
-            if (ev.time !== curTime && curGroup.length > 0) {
-                groups.push({ time: curTime, notes: [...curGroup] });
-                curGroup = [];
-            }
-            curGroup.push(ev);
-            curTime = ev.time;
-        }
-        if (curGroup.length > 0) groups.push({ time: curTime, notes: curGroup });
-        
+
+    function midiNoteToFullName(n) { const names=['ド','ド♯','レ','レ♯','ミ','ファ','ファ♯','ソ','ソ♯','ラ','ラ♯','シ']; return `${names[n%12]}${Math.floor(n/12)-1}`; }
+    function getPitchColorClass(n) { if (n<48) return 'pitch-low'; if (n<64) return 'pitch-mid'; if (n<80) return 'pitch-high'; return 'pitch-veryhigh'; }
+    function pitchLevelBar(n) { let l = Math.min(5, Math.max(0, Math.floor((n-24)/12))); return '●'.repeat(l+1)+'○'.repeat(5-l); }
+
+    function processMIDIToGroups(midi) {
+        const allNotes = [];
+        for (const track of midi.tracks) for (const ev of track.events) if (ev.type === 'note_on' && ev.velocity > 0) allNotes.push({ time: ev.time, note: ev.note, channel: ev.channel });
+        allNotes.sort((a,b)=>a.time-b.time);
+        const groups = []; let cur=[], curT=-1;
+        for (const ev of allNotes) { if (ev.time !== curT && cur.length) { groups.push({ time: curT, notes: [...cur] }); cur=[]; } cur.push(ev); curT=ev.time; }
+        if (cur.length) groups.push({ time: curT, notes: cur });
         return { groups, ticksPerQuarter: midi.ticksPerQuarter };
     }
-    
-    // --------------------------------------------------------------
-    // レンダリング (小節区切り & 和音 & オクターブ表示 & 色)
-    // --------------------------------------------------------------
-    function renderWithOctaveAndColor(processed) {
+
+    function renderScoreWithData(processed, seekMode) {
         const { groups, ticksPerQuarter } = processed;
-        if (!groups || groups.length === 0) {
-            return '<div class="error">🎵 ノートイベントが見つかりません (note_on がありません)</div>';
-        }
-        
-        // 小節の基準: 4分音符= ticksPerQuarter, 4/4 拍子と仮定 (表示用)
+        if (!groups.length) return '<div class="empty-message">音符がありません</div>';
         const ticksPerBar = ticksPerQuarter * 4;
-        
-        let html = '<div class="doremi-view">';
-        let currentBar = -1;
-        
-        for (let idx = 0; idx < groups.length; idx++) {
-            const group = groups[idx];
-            const timeInBeats = group.time / ticksPerQuarter;
-            const barNumber = Math.floor(group.time / ticksPerBar) + 1;
-            
-            // 小節が変わったら区切りを入れる
-            if (barNumber !== currentBar) {
-                if (currentBar !== -1) {
-                    html += `</div>`; // 前のmeasure-block閉じる
-                }
-                html += `<div class="measure-block">`;
-                html += `<div class="measure-header">📖 小節 ${barNumber}</div>`;
-                currentBar = barNumber;
-            }
-            
-            // 拍表示 (小数第1位まで)
-            const beatPos = (timeInBeats % 4).toFixed(1);
-            const beatLabel = (beatPos === '0.0' ? '1.0' : (parseFloat(beatPos) + 1).toFixed(1));
-            
-            html += `<div class="event-row">`;
-            html += `<span class="time-label">🎯 ${beatLabel}拍目</span>`;
-            html += `<div class="chord-group-compact">`;
-            
-            // 和音内の音符をピッチ順に並べる (低→高)
-            const sortedNotes = [...group.notes].sort((a,b) => a.note - b.note);
-            for (const noteEv of sortedNotes) {
-                const { name, octave, full } = midiNoteToNameWithOctave(noteEv.note);
-                const colorClass = getPitchColorClass(noteEv.note);
-                const channelMark = getChannelSymbol(noteEv.channel);
-                // オクターブ表示を明確にするため「ド4」のようにフル表記
-                html += `<span class="note" style="border-left: 3px solid ${noteEv.note >= 72 ? '#3b82f6' : '#f97316'};">`;
-                html += `<span class="channel-badge">${channelMark}</span>`;
-                html += `<span class="note-pitch ${colorClass}">${full}</span>`;
-                // 補助的な音高インジケーター: 簡単なバー
-                let pitchLevel = Math.min(5, Math.floor((noteEv.note - 24) / 12));
-                if(pitchLevel<0) pitchLevel=0;
-                const barHint = '▰'.repeat(pitchLevel+1) + '▱'.repeat(5-pitchLevel);
-                html += `<span style="font-size:0.6rem; margin-left: 4px; color:#6c757d;">${barHint}</span>`;
-                html += `</span>`;
+        let html = '', currentBar = -1;
+        for (let idx=0; idx<groups.length; idx++) {
+            const g = groups[idx];
+            const bar = Math.floor(g.time / ticksPerBar) + 1;
+            if (bar !== currentBar) { if (currentBar !== -1) html += `</div>`; html += `<div class="measure-block"><div class="measure-header">📖 小節 ${bar}</div>`; currentBar = bar; }
+            const beatRaw = g.time / ticksPerQuarter;
+            const beatInMeasure = (beatRaw % 4).toFixed(1);
+            const displayBeat = beatInMeasure === '0.0' ? '1.0' : (parseFloat(beatInMeasure) + 1).toFixed(1);
+            const seekClass = seekMode ? 'seek-mode' : '';
+            html += `<div class="event-row ${seekClass}" data-group-index="${idx}" data-group-time="${g.time}">`;
+            html += `<div class="time-label"><span class="material-symbols-outlined" style="font-size:14px">schedule</span> ${displayBeat}拍目</div>`;
+            html += `<div class="chord-group">`;
+            for (const n of [...g.notes].sort((a,b)=>a.note-b.note)) {
+                html += `<div class="note-chip"><span class="channel-badge">${n.channel===0?'🎹右':'🎸左'}</span><span class="note-pitch ${getPitchColorClass(n.note)}">${midiNoteToFullName(n.note)}</span><span class="pitch-bar">${pitchLevelBar(n.note)}</span></div>`;
             }
             html += `</div></div>`;
         }
-        if (currentBar !== -1) html += `</div>`; // 最終小節閉じる
-        html += `</div>`;
-        
-        // 凡例追加
-        html += `<div class="piano-keyboard-tip">🎨 色の目安: <span style="color:#b91c1c;">低音(赤)</span> → <span style="color:#ca8a04;">中音(橙)</span> → <span style="color:#2563eb;">高音(青)</span> → <span style="color:#7c3aed;">超高音(紫)</span> &nbsp;|  ▰▱ で高さバー</div>`;
+        if (currentBar !== -1) html += `</div>`;
+        html += `<div class="legend">🎨 色=音高 | 🔍 シークモード時、拍目をクリックでその位置から再生 | 🎚️ テンポ調整可能</div>`;
         return html;
     }
+
+    // --------------------------------------------------------------
+    // 再生エンジン
+    // --------------------------------------------------------------
+    let audioCtx = null;
+    let activeOscillators = [];
+    let playbackTimeout = null;
+    let highlightTimer = null;
+    let isPlaying = false;
+    let currentGroupIndex = -1;
+    let currentGroups = [];
+    let currentTicksPerQuarter = 480;
+    let currentTempoBPM = 120;
     
-    // --------------------------------------------------------------
-    // テキスト出力: オクターブ付きドレミ + 拍情報
-    // --------------------------------------------------------------
-    function exportToTextWithOctave(processed) {
-        const { groups, ticksPerQuarter } = processed;
-        const lines = [];
-        let currentBar = -1;
-        const ticksPerBar = ticksPerQuarter * 4;
-        
-        for (const group of groups) {
-            const bar = Math.floor(group.time / ticksPerBar) + 1;
-            if (bar !== currentBar) {
-                if (currentBar !== -1) lines.push('');
-                lines.push(`【第 ${bar} 小節】`);
-                currentBar = bar;
-            }
-            const beatRaw = group.time / ticksPerQuarter;
-            const beatInMeasure = (beatRaw % 4).toFixed(1);
-            const displayBeat = beatInMeasure === '0.0' ? '1.0' : (parseFloat(beatInMeasure) + 1).toFixed(1);
-            
-            const notesList = [];
-            for (const n of group.notes) {
-                const { full } = midiNoteToNameWithOctave(n.note);
-                const hand = n.channel === 0 ? '右' : (n.channel === 1 ? '左' : `CH${n.channel}`);
-                notesList.push(`${hand}${full}`);
-            }
-            lines.push(`  ${displayBeat}拍目: ${notesList.join(' , ')}`);
-        }
-        return lines.join('\n');
+    let seekModeActive = false;
+    let autoScrollEnabled = true;
+    let userScrolled = false;
+
+    const scoreContainer = document.getElementById('scoreContainer');
+    const autoScrollBtn = document.getElementById('autoScrollBtn');
+    const tempoSlider = document.getElementById('tempoSlider');
+    const tempoValue = document.getElementById('tempoValue');
+
+    tempoSlider.addEventListener('input', (e) => { currentTempoBPM = parseInt(e.target.value); tempoValue.textContent = `${currentTempoBPM} BPM`; });
+
+    function setSeekMode(active) {
+        seekModeActive = active;
+        const rows = document.querySelectorAll('.event-row');
+        rows.forEach(row => {
+            if (active) row.classList.add('seek-mode');
+            else row.classList.remove('seek-mode');
+        });
+        if (active) attachSeekEvents();
     }
-    
+
+    function attachSeekEvents() {
+        const rows = document.querySelectorAll('.event-row.seek-mode');
+        rows.forEach(row => {
+            if (row._seekHandler) row.removeEventListener('click', row._seekHandler);
+            const handler = async (e) => {
+                e.stopPropagation();
+                const idx = parseInt(row.dataset.groupIndex);
+                if (!isNaN(idx) && currentGroups.length) {
+                    await startPlaybackFromGroup(idx);
+                }
+            };
+            row._seekHandler = handler;
+            row.addEventListener('click', handler);
+        });
+    }
+
+    async function getAudioContext() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') await audioCtx.resume(); return audioCtx; }
+    function midiToFreq(note) { return 440 * Math.pow(2, (note - 69) / 12); }
+    function playNoteAtTime(ctx, freq, startTime, durationSec, vel=0.85) {
+        const when = Math.max(ctx.currentTime, startTime);
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.type = 'sine'; osc.frequency.value = freq;
+        gain.gain.value = vel * 0.7;
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(when);
+        gain.gain.setValueAtTime(vel*0.7, when);
+        gain.gain.exponentialRampToValueAtTime(0.0001, when+durationSec);
+        osc.stop(when+durationSec);
+        const handle = { osc, gain };
+        osc.onended = () => { const idx = activeOscillators.indexOf(handle); if(idx!==-1) activeOscillators.splice(idx,1); };
+        activeOscillators.push(handle);
+        return handle;
+    }
+
+    async function stopPlayback() {
+        if (playbackTimeout) clearTimeout(playbackTimeout);
+        if (highlightTimer) clearTimeout(highlightTimer);
+        for (const h of activeOscillators) { try { h.osc.stop(); } catch(e){} }
+        activeOscillators = [];
+        isPlaying = false;
+        document.querySelectorAll('.event-row.active-row').forEach(r=>r.classList.remove('active-row'));
+        document.querySelectorAll('.note-chip.active-note').forEach(c=>c.classList.remove('active-note'));
+        currentGroupIndex = -1;
+        if (audioCtx) { try { await audioCtx.close(); } catch(e){} audioCtx = null; }
+    }
+
+    async function startPlaybackFromGroup(startGroupIndex) {
+        await stopPlayback();
+        if (!currentGroups.length) return;
+        const ctx = await getAudioContext();
+        if (!ctx) return;
+        const secondsPerTick = (60.0 / currentTempoBPM) / currentTicksPerQuarter;
+        const startBaseTime = ctx.currentTime + 0.05;
+        const firstGroupTime = currentGroups[startGroupIndex].time;
+        const timeOffset = firstGroupTime * secondsPerTick;
+        const globalStartTime = startBaseTime - timeOffset;
+        
+        const MIN_DUR = 0.22;
+        const noteJobs = [];
+        const groupSchedule = [];
+        for (let i=startGroupIndex; i<currentGroups.length; i++) {
+            const g = currentGroups[i];
+            const absSec = g.time * secondsPerTick;
+            const playTime = globalStartTime + absSec;
+            let dur = MIN_DUR;
+            if (i+1 < currentGroups.length) {
+                const nextSec = currentGroups[i+1].time * secondsPerTick;
+                const gap = nextSec - absSec;
+                dur = Math.max(MIN_DUR, Math.min(gap, 0.7));
+            } else dur = 0.45;
+            groupSchedule.push({ idx: i, playTime, dur });
+            for (const n of g.notes) noteJobs.push({ freq: midiToFreq(n.note), playTime, duration: dur });
+        }
+        for (const job of noteJobs) playNoteAtTime(ctx, job.freq, job.playTime, job.duration, 0.85);
+        
+        let scheduleIdx = 0;
+        const scheduleHighlight = () => {
+            if (!isPlaying) return;
+            const now = ctx.currentTime;
+            while (scheduleIdx < groupSchedule.length && groupSchedule[scheduleIdx].playTime <= now + 0.05) {
+                if (currentGroupIndex !== groupSchedule[scheduleIdx].idx) {
+                    currentGroupIndex = groupSchedule[scheduleIdx].idx;
+                    highlightGroup(currentGroupIndex);
+                    if (autoScrollEnabled && !userScrolled) scrollToActiveRow();
+                }
+                scheduleIdx++;
+            }
+            if (scheduleIdx < groupSchedule.length) {
+                const nextTime = groupSchedule[scheduleIdx].playTime;
+                const delay = Math.max(0, (nextTime - ctx.currentTime) * 1000);
+                highlightTimer = setTimeout(scheduleHighlight, delay);
+            } else { currentGroupIndex = -1; highlightGroup(-1); }
+        };
+        isPlaying = true;
+        scheduleHighlight();
+        const last = groupSchedule[groupSchedule.length-1];
+        const endTime = last.playTime + last.dur;
+        playbackTimeout = setTimeout(async () => { if(isPlaying) await stopPlayback(); }, (endTime - ctx.currentTime)*1000 + 300);
+    }
+
+    function highlightGroup(idx) {
+        document.querySelectorAll('.event-row.active-row').forEach(r=>r.classList.remove('active-row'));
+        document.querySelectorAll('.note-chip.active-note').forEach(c=>c.classList.remove('active-note'));
+        if (idx<0) return;
+        const row = document.querySelector(`.event-row[data-group-index="${idx}"]`);
+        if (row) {
+            row.classList.add('active-row');
+            row.querySelectorAll('.note-chip').forEach(chip => { chip.classList.add('active-note'); setTimeout(()=>chip.classList.remove('active-note'), 300); });
+        }
+    }
+    function scrollToActiveRow() {
+        if (!autoScrollEnabled) return;
+        const active = document.querySelector(`.event-row.active-row`);
+        if (active && scoreContainer) active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    function disableAutoScroll() { autoScrollEnabled = false; userScrolled = true; autoScrollBtn.classList.add('disabled'); autoScrollBtn.innerHTML='<span class="material-symbols-outlined">center_focus_weak</span> 手動停止中'; setTimeout(()=>{ if(!autoScrollEnabled){ autoScrollBtn.innerHTML='<span class="material-symbols-outlined">center_focus_strong</span> 自動フォーカス開始'; autoScrollBtn.classList.remove('disabled'); } },1500); }
+    function enableAutoScroll() { autoScrollEnabled=true; userScrolled=false; autoScrollBtn.classList.remove('disabled'); autoScrollBtn.innerHTML='<span class="material-symbols-outlined">center_focus_strong</span> 自動フォーカス開始'; if(isPlaying && currentGroupIndex>=0) scrollToActiveRow(); }
+
     // --------------------------------------------------------------
-    // UI & イベントハンドリング
+    // UI 操作
     // --------------------------------------------------------------
-    let currentProcessedData = null;
+    let currentProcessed = null;
     const uploadArea = document.getElementById('uploadArea');
     const fileInput = document.getElementById('fileInput');
     const resultArea = document.getElementById('resultArea');
-    const controlsDiv = document.getElementById('controls');
-    const statsPanel = document.getElementById('statsPanel');
+    const controlsWrapper = document.getElementById('controlsWrapper');
+    const statsPanelDiv = document.getElementById('statsPanel');
+    const playBtn = document.getElementById('playBtn');
+    const stopBtn = document.getElementById('stopBtn');
     const exportBtn = document.getElementById('exportTxtBtn');
     const clearBtn = document.getElementById('clearBtn');
-    
-    uploadArea.addEventListener('click', () => fileInput.click());
+    const modeToggle = document.getElementById('modeToggle');
+
+    // ファイル選択 - 直接クリックで動作するよう修正
+    uploadArea.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fileInput.click();
+    });
     uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
     uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
     uploadArea.addEventListener('drop', async e => {
         e.preventDefault();
         uploadArea.classList.remove('drag-over');
         const file = e.dataTransfer.files[0];
-        if (file && (file.name.endsWith('.mid') || file.name.endsWith('.midi'))) {
-            await loadAndRender(file);
+        if (file && (file.name.endsWith('.mid') || file.name.endsWith('.midi'))) await loadAndRender(file);
+        else resultArea.innerHTML = `<div class="empty-message">⚠️ .mid ファイルをドロップしてください</div>`;
+    });
+    fileInput.addEventListener('change', async e => { if (e.target.files[0]) await loadAndRender(e.target.files[0]); });
+
+    modeToggle.addEventListener('click', (e) => {
+        const btn = e.target.closest('.mode-btn');
+        if (!btn) return;
+        const mode = btn.dataset.mode;
+        document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        seekModeActive = (mode === 'seek');
+        if (currentProcessed) {
+            resultArea.innerHTML = renderScoreWithData(currentProcessed, seekModeActive);
+            if (seekModeActive) attachSeekEvents();
         } else {
-            resultArea.innerHTML = '<div class="error">⚠️ .mid または .midi ファイルをドロップしてください</div>';
+            setSeekMode(seekModeActive);
         }
     });
-    
-    fileInput.addEventListener('change', async e => {
-        if (e.target.files[0]) await loadAndRender(e.target.files[0]);
-    });
-    
+
     async function loadAndRender(file) {
-        resultArea.innerHTML = '<div style="text-align:center; padding:40px;">⏳ MIDI解析中 (音の高さを計算しています...)</div>';
+        await stopPlayback();
+        resultArea.innerHTML = '<div class="empty-message">解析中...</div>';
         try {
-            const midi = await MidiParser.parse(await file.arrayBuffer());
-            const processed = processMIDIToGroupedNotes(midi);
-            currentProcessedData = processed;
-            
-            const totalNotes = processed.groups.reduce((sum, g) => sum + g.notes.length, 0);
-            const totalEvents = processed.groups.length;
-            statsPanel.style.display = 'flex';
-            statsPanel.innerHTML = `<span>📁 ${escapeHtml(file.name)}</span>
-                                    <span>🎵 総ノート数: ${totalNotes}</span>
-                                    <span>🎼 和音/タイミング数: ${totalEvents}</span>
-                                    <span>⏱️ 分解能: ${midi.ticksPerQuarter} ticks/四分音符</span>
-                                    <span>🎹 オクターブ付き音名表示</span>`;
-            
-            const renderedHtml = renderWithOctaveAndColor(processed);
-            resultArea.innerHTML = renderedHtml;
-            controlsDiv.style.display = 'flex';
-        } catch (err) {
-            console.error(err);
-            resultArea.innerHTML = `<div class="error">❌ MIDI解析エラー: ${escapeHtml(err.message)}<br>ファイルが正しいMIDI形式か確認してください。</div>`;
-            controlsDiv.style.display = 'none';
-            statsPanel.style.display = 'none';
-        }
+            const buf = await file.arrayBuffer();
+            const midi = MidiParser.parse(buf);
+            const processed = processMIDIToGroups(midi);
+            currentProcessed = processed;
+            currentGroups = processed.groups;
+            currentTicksPerQuarter = processed.ticksPerQuarter;
+            const totalNotes = processed.groups.reduce((s,g)=>s+g.notes.length,0);
+            statsPanelDiv.style.display = 'block';
+            statsPanelDiv.innerHTML = `<div class="stats-card"><div class="stat-item">📄 ${escapeHtml(file.name)}</div><div class="stat-item">🎵 総ノート ${totalNotes}</div><div class="stat-item">🎼 和音数 ${processed.groups.length}</div><div class="stat-item">🎚️ テンポ可変</div></div>`;
+            resultArea.innerHTML = renderScoreWithData(processed, seekModeActive);
+            controlsWrapper.style.display = 'block';
+            if (seekModeActive) attachSeekEvents();
+            autoScrollEnabled = true; userScrolled = false;
+            autoScrollBtn.classList.remove('disabled'); autoScrollBtn.innerHTML='<span class="material-symbols-outlined">center_focus_strong</span> 自動フォーカス開始';
+        } catch(err) { resultArea.innerHTML = `<div class="empty-message">❌ ${escapeHtml(err.message)}</div>`; controlsWrapper.style.display = 'none'; statsPanelDiv.style.display = 'none'; }
     }
-    
+
+    playBtn.addEventListener('click', async () => {
+        if (!currentProcessed) { alert("MIDIを読み込んでください"); return; }
+        await startPlaybackFromGroup(0);
+    });
+    stopBtn.addEventListener('click', async () => { await stopPlayback(); });
     exportBtn.addEventListener('click', () => {
-        if (currentProcessedData) {
-            const txtContent = exportToTextWithOctave(currentProcessedData);
-            const blob = new Blob([txtContent], {type: 'text/plain;charset=utf-8'});
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'midi_doremi_octave.txt';
-            link.click();
-            URL.revokeObjectURL(link.href);
-        } else {
-            alert('表示されているMIDIデータがありません。先にファイルを読み込んでください。');
-        }
+        if (!currentProcessed) return;
+        const lines = []; let bar=-1, ticksPerBar=currentTicksPerQuarter*4;
+        for(let i=0;i<currentGroups.length;i++){ const g=currentGroups[i]; const b=Math.floor(g.time/ticksPerBar)+1; if(b!==bar){ if(bar!==-1) lines.push(''); lines.push(`【小節 ${b}】`); bar=b; } const beat=(g.time/currentTicksPerQuarter)%4; const disp= beat===0?'1.0':(beat+1).toFixed(1); const notes=g.notes.map(n=>`${n.channel===0?'右':'左'}${midiNoteToFullName(n.note)}`).join(','); lines.push(`  ${disp}拍目: ${notes}`); }
+        const blob = new Blob([lines.join('\n')], {type:'text/plain'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='midi_doremi.txt'; a.click(); URL.revokeObjectURL(a.href);
     });
+    clearBtn.addEventListener('click', async () => { await stopPlayback(); currentProcessed = null; resultArea.innerHTML = `<div class="empty-message">クリアしました</div>`; controlsWrapper.style.display = 'none'; statsPanelDiv.style.display = 'none'; fileInput.value = ''; });
+    function escapeHtml(str) { return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]); }
     
-    clearBtn.addEventListener('click', () => {
-        currentProcessedData = null;
-        resultArea.innerHTML = `<div style="text-align:center; padding:48px; color:#64748b;">
-            🧹 クリアしました。新しいMIDIファイルを読み込めます。<br>
-            ✨ 音の高さが「ド4」「ラ#5」のようにオクターブ付きで表示されます。
-        </div>`;
-        controlsDiv.style.display = 'none';
-        statsPanel.style.display = 'none';
-        fileInput.value = '';
-    });
-    
-    function escapeHtml(str) {
-        if (!str) return '';
-        return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
-    }
-    
-    // 初期表示でもわかりやすいようにメッセージ
-    console.log('MIDI ドレミ表示器 (音の高さオクターブ版) 起動完了');
+    scoreContainer.addEventListener('wheel', () => { if (autoScrollEnabled) disableAutoScroll(); });
+    scoreContainer.addEventListener('touchmove', () => { if (autoScrollEnabled) disableAutoScroll(); });
+    autoScrollBtn.addEventListener('click', () => { enableAutoScroll(); if (isPlaying && currentGroupIndex>=0) scrollToActiveRow(); });
 </script>
 </body>
 </html>
